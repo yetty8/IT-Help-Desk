@@ -13,7 +13,13 @@ import usersRouter from "./routes/users";
 
 const app = express();
 
-app.use(cors());
+// CORS configuration - update allowed origins for production
+app.use(cors({
+  origin: process.env.FRONTEND_URL || process.env.CORS_ORIGIN || "*",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

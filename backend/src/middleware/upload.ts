@@ -3,10 +3,12 @@ import path from "path";
 import fs from "fs";
 
 // Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, "../../uploads");
+// Use RAILWAY_VOLUME_MOUNT_PATH if available (Railway volumes), otherwise use local uploads
+const uploadsDir = process.env.UPLOADS_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, "../../uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
+console.log(`Uploads directory: ${uploadsDir}`);
 
 // Configure multer storage
 const storage = multer.diskStorage({

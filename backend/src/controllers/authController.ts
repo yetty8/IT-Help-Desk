@@ -8,6 +8,14 @@ if (!JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is required");
 }
 
+// Type assertion to ensure JWT_SECRET is always a string after the check
+const getJwtSecret = (): string => {
+  if (!JWT_SECRET) {
+    throw new Error("JWT_SECRET environment variable is required");
+  }
+  return JWT_SECRET;
+};
+
 export async function register(req: Request, res: Response){
   try {
     const { email, password, name, role } = req.body;
@@ -18,7 +26,7 @@ export async function register(req: Request, res: Response){
     
     const hash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({ data: { email, password: hash, name: name || email, role: role || "USER" }});
-    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ userId: user.id, role: user.role }, getJwtSecret(), { expiresIn: "7d" });
     res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role }, token });
   } catch (error: any) {
     console.error("Registration error:", error);
@@ -40,7 +48,7 @@ export async function login(req: Request, res: Response){
     if(!user) return res.status(401).json({ error: "Invalid credentials" });
     const ok = await bcrypt.compare(password, user.password);
     if(!ok) return res.status(401).json({ error: "Invalid credentials" });
-    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ userId: user.id, role: user.role }, getJwtSecret(), { expiresIn: "7d" });
     res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role }, token });
   } catch (error: any) {
     console.error("Login error:", error);
