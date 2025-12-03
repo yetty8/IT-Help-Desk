@@ -58,8 +58,22 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Health check endpoint (for Railway/health checks)
+// Railway checks this endpoint to verify the service is running
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.status(200).json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Root endpoint for Railway health checks (some platforms check /)
+app.get("/", (req, res) => {
+  res.status(200).json({ 
+    status: "ok", 
+    service: "IT Helpdesk API",
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.use("/api/auth", authRouter);
