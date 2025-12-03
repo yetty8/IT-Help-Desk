@@ -15,9 +15,19 @@ export default function CreateTicket() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiUrl, setApiUrl] = useState<string>("");
 
   const nav = useNavigate();
   const { user } = useAuth();
+
+  // Log API URL on mount for debugging
+  React.useEffect(() => {
+    const url = import.meta.env.VITE_API_URL || API.defaults.baseURL;
+    setApiUrl(url);
+    console.log("CreateTicket - API URL:", url);
+    console.log("CreateTicket - Full API Base:", API.defaults.baseURL);
+    console.log("CreateTicket - VITE_API_URL env:", import.meta.env.VITE_API_URL || "NOT SET");
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -120,6 +130,20 @@ export default function CreateTicket() {
 
         {/* Error Alert */}
         <ErrorAlert message={error} />
+        
+        {/* Debug info - visible in production to help diagnose issues */}
+        <div className="text-xs text-gray-500 dark:text-gray-400 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+          <div className="font-semibold mb-2">🔍 Debug Info:</div>
+          <div>API URL: <span className="font-mono text-xs">{apiUrl || "NOT SET"}</span></div>
+          <div>Base URL: <span className="font-mono text-xs">{API.defaults.baseURL}</span></div>
+          <div>Environment: {import.meta.env.MODE}</div>
+          <div>VITE_API_URL: {import.meta.env.VITE_API_URL || "NOT SET"}</div>
+          {!import.meta.env.VITE_API_URL && (
+            <div className="text-red-600 dark:text-red-400 mt-2 font-semibold">
+              ⚠️ VITE_API_URL not set! Set it in Vercel environment variables.
+            </div>
+          )}
+        </div>
 
         {/* Title */}
         <div>
