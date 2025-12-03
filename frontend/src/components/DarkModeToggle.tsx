@@ -13,10 +13,11 @@ export default function DarkModeToggle() {
   return (
     <button
       onClick={() => setDark(!dark)}
-      className="px-2 py-1 border dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded"
+      className="px-3 py-2 border dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded touch-manipulation active:bg-gray-100 dark:active:bg-slate-700 transition-colors"
       aria-pressed={dark}
       aria-label="Toggle dark mode"
       title={dark ? "Switch to light mode" : "Switch to dark mode"}
+      style={{ minHeight: '44px', minWidth: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
       {dark ? "Light" : "Dark"}
     </button>

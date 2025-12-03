@@ -20,4 +20,23 @@
   }
 }
 
+/* Mobile touch improvements */
+@layer utilities {
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Ensure all links and buttons are easily tappable on mobile */
+  a, button {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Prevent text selection on tap for better mobile UX */
+  a, button {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
 /* keep any other custom rules below */
