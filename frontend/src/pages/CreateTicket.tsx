@@ -36,23 +36,75 @@ export default function CreateTicket() {
     try {
       setLoading(true);
 
+      // Check if user is logged in
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("You are not logged in. Please log in and try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Log API details for debugging
+      console.log("Creating ticket with API:", API.defaults.baseURL);
+      console.log("Token present:", !!token);
+
       // 🔥 Send as multipart form (supports file upload)
       const formData = new FormData();
-      formData.append("title", title);
-      formData.append("description", description);
+      formData.append("title", title.trim());
+      formData.append("description", description.trim());
       formData.append("priority", priority);
       formData.append("category", category);
-      if (file) formData.append("file", file);
+      if (file) {
+        formData.append("file", file);
+        console.log("Including file:", file.name, file.size, "bytes");
+      }
 
-      await API.post("/tickets", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const response = await API.post("/tickets", formData, {
+        headers: { 
+          "Content-Type": "multipart/form-data",
+          "Authorization": `Bearer ${token}`
+        },
       });
 
+      console.log("Ticket created successfully:", response.data);
       setLoading(false);
       nav("/");
     } catch (err: any) {
       setLoading(false);
-      setError(err?.response?.data?.error || "Failed to create ticket");
+      console.error("Create ticket error:", err);
+      console.error("Error details:", {
+        status: err?.response?.status,
+        statusText: err?.response?.statusText,
+        data: err?.response?.data,
+        message: err?.message,
+        code: err?.code,
+        config: {
+          url: err?.config?.url,
+          baseURL: err?.config?.baseURL,
+          method: err?.config?.method
+        }
+      });
+      
+      // Better error handling with more details
+      if (err?.response?.status === 401) {
+        setError("You are not logged in or your session expired. Please log in and try again.");
+        // Clear invalid token
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setTimeout(() => nav("/login"), 2000);
+      } else if (err?.response?.status === 0 || err?.code === "ERR_NETWORK" || err?.code === "ERR_INTERNET_DISCONNECTED") {
+        const apiUrl = API.defaults.baseURL || "NOT SET";
+        setError(`Network error. Cannot reach backend at ${apiUrl}. Please check: 1) Backend is running, 2) VITE_API_URL is set in Vercel.`);
+      } else if (err?.response?.status === 500) {
+        const errorMsg = err?.response?.data?.error || "Server error";
+        setError(`Server error: ${errorMsg}. The backend might be having issues. Check Railway logs.`);
+      } else if (err?.response?.data?.error) {
+        setError(err.response.data.error);
+      } else if (err?.message) {
+        setError(`Error: ${err.message}`);
+      } else {
+        setError("Failed to create ticket. Please check the browser console for details.");
+      }
     }
   }
 
