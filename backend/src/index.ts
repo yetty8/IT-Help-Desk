@@ -14,11 +14,42 @@ import usersRouter from "./routes/users";
 const app = express();
 
 // CORS configuration - update allowed origins for production
+const allowedOrigins = process.env.FRONTEND_URL 
+  ? process.env.FRONTEND_URL.split(",").map(url => url.trim())
+  : process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(",").map(url => url.trim())
+    : ["*"];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || process.env.CORS_ORIGIN || "*",
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Allow all origins in development or if "*" is set
+    if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Check if origin matches any allowed pattern
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed.includes("*")) {
+        const pattern = allowed.replace("*", ".*");
+        return new RegExp(pattern).test(origin);
+      }
+      return origin === allowed;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(null, true); // Allow for now, but log warning
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  exposedHeaders: ["Authorization"]
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

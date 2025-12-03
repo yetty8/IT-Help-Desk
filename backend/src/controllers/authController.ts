@@ -19,13 +19,31 @@ const getJwtSecret = (): string => {
 export async function register(req: Request, res: Response){
   try {
     const { email, password, name, role } = req.body;
-    if(!email || !password) return res.status(400).json({error:"email and password required"});
     
-    const existing = await prisma.user.findUnique({ where: { email }});
+    if(!email || !password) {
+      return res.status(400).json({error:"email and password required"});
+    }
+    
+    // Normalize email (lowercase and trim)
+    const normalizedEmail = email.toLowerCase().trim();
+    const trimmedPassword = password.trim();
+    
+    if (!normalizedEmail || !trimmedPassword) {
+      return res.status(400).json({error:"email and password required"});
+    }
+    
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail }});
     if(existing) return res.status(400).json({error:"User exists"});
     
-    const hash = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({ data: { email, password: hash, name: name || email, role: role || "USER" }});
+    const hash = await bcrypt.hash(trimmedPassword, 10);
+    const user = await prisma.user.create({ 
+      data: { 
+        email: normalizedEmail, 
+        password: hash, 
+        name: (name || normalizedEmail).trim(), 
+        role: role || "USER" 
+      }
+    });
     const token = jwt.sign({ userId: user.id, role: user.role }, getJwtSecret(), { expiresIn: "7d" });
     res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role }, token });
   } catch (error: any) {
@@ -44,10 +62,39 @@ export async function register(req: Request, res: Response){
 export async function login(req: Request, res: Response){
   try {
     const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { email }});
-    if(!user) return res.status(401).json({ error: "Invalid credentials" });
-    const ok = await bcrypt.compare(password, user.password);
-    if(!ok) return res.status(401).json({ error: "Invalid credentials" });
+    
+    // Log login attempt (without password) for debugging
+    console.log("Login attempt for email:", email ? email.toLowerCase().trim() : "missing");
+    
+    if (!email || !password) {
+      console.log("Login failed: Missing email or password");
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+    
+    // Normalize email (lowercase and trim)
+    const normalizedEmail = email.toLowerCase().trim();
+    const trimmedPassword = password.trim();
+    
+    if (!normalizedEmail || !trimmedPassword) {
+      console.log("Login failed: Empty email or password after normalization");
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+    
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail }});
+    
+    if(!user) {
+      console.log("Login failed: User not found for email:", normalizedEmail);
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    
+    const ok = await bcrypt.compare(trimmedPassword, user.password);
+    
+    if(!ok) {
+      console.log("Login failed: Password mismatch for email:", normalizedEmail);
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    
+    console.log("Login successful for user:", user.email);
     const token = jwt.sign({ userId: user.id, role: user.role }, getJwtSecret(), { expiresIn: "7d" });
     res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role }, token });
   } catch (error: any) {
