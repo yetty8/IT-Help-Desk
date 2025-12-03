@@ -22,7 +22,7 @@ export default function CreateTicket() {
 
   // Log API URL on mount for debugging
   React.useEffect(() => {
-    const url = import.meta.env.VITE_API_URL || API.defaults.baseURL;
+    const url = (import.meta.env.VITE_API_URL || API.defaults.baseURL) as string;
     setApiUrl(url);
     console.log("CreateTicket - API URL:", url);
     console.log("CreateTicket - Full API Base:", API.defaults.baseURL);
