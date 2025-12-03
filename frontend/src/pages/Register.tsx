@@ -18,24 +18,42 @@ export default function Register() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!email || !password) {
+    
+    // Trim inputs to handle mobile keyboard issues
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedName = name.trim();
+    const trimmedPassword = password.trim();
+    
+    if (!trimmedEmail || !trimmedPassword) {
       setError("Email and password are required");
       return;
     }
-    if (password.length < 6) {
+    if (trimmedPassword.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
     try {
       setLoading(true);
-      const res = await API.post("/auth/register", { email, name, password });
+      const res = await API.post("/auth/register", { 
+        email: trimmedEmail, 
+        name: trimmedName || trimmedEmail,
+        password: trimmedPassword 
+      });
       const { token, user } = res.data;
       login(token, user);
       setLoading(false);
       nav("/");
     } catch (err: any) {
       setLoading(false);
-      setError(err?.response?.data?.error || "Error registering");
+      console.error("Registration error:", err);
+      
+      if (err?.response?.status === 0 || err?.code === "ERR_NETWORK") {
+        setError("Network error. Please check your connection.");
+      } else if (err?.response?.data?.error) {
+        setError(err.response.data.error);
+      } else {
+        setError("Registration failed. Please try again.");
+      }
     }
   }
 

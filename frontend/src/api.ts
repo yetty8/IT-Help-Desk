@@ -1,10 +1,40 @@
 // src/api.ts
 import axios from "axios";
 
+// Get API URL from environment or use relative path for same domain
+const getApiUrl = () => {
+  // In production, use environment variable
+  const envUrl = import.meta.env.VITE_API_URL;
+  
+  if (envUrl) {
+    // Remove trailing slash if present
+    return envUrl.replace(/\/$/, "");
+  }
+  
+  // Last resort: localhost for development
+  const devUrl = "http://localhost:4000/api";
+  
+  // Log warning if in production but no API URL set
+  if (import.meta.env.PROD) {
+    console.error("⚠️ VITE_API_URL not set! API calls will fail.");
+    console.error("Please set VITE_API_URL in Vercel environment variables");
+  }
+  
+  return devUrl;
+};
+
+const API_BASE_URL = getApiUrl();
+
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:4000/api",
+  baseURL: API_BASE_URL,
   withCredentials: false,
+  timeout: 30000, // 30 second timeout for mobile networks
 });
+
+// Always log API URL for debugging (especially on mobile)
+console.log("🔗 API Base URL:", API_BASE_URL);
+console.log("🌍 Environment:", import.meta.env.MODE);
+console.log("📦 VITE_API_URL:", import.meta.env.VITE_API_URL || "NOT SET");
 
 export function setToken(token?: string) {
   if (token) API.defaults.headers.common["Authorization"] = "Bearer " + token;
@@ -14,6 +44,16 @@ export function setToken(token?: string) {
 API.interceptors.response.use(
   (res) => res,
   (err) => {
+    // Log API errors for debugging
+    console.error("API Error:", {
+      url: err.config?.url,
+      baseURL: err.config?.baseURL,
+      fullURL: err.config?.baseURL + err.config?.url,
+      status: err.response?.status,
+      message: err.message,
+      code: err.code
+    });
+    
     if (err?.response?.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
