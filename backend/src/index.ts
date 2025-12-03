@@ -57,9 +57,16 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
+// Track server readiness
+let serverReady = false;
+
 // Health check endpoint (for Railway/health checks)
 // Railway checks this endpoint to verify the service is running
+// Must respond quickly (< 1 second)
 app.get("/health", (req, res) => {
+  if (!serverReady) {
+    return res.status(503).json({ status: "starting" });
+  }
   res.status(200).json({ 
     status: "ok", 
     timestamp: new Date().toISOString(),
@@ -72,7 +79,8 @@ app.get("/", (req, res) => {
   res.status(200).json({ 
     status: "ok", 
     service: "IT Helpdesk API",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    ready: serverReady
   });
 });
 
@@ -105,6 +113,13 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`✅ Server running on http://${HOST}:${PORT}`);
   console.log(`✅ Health check available at http://${HOST}:${PORT}/health`);
   console.log(`✅ Root endpoint available at http://${HOST}:${PORT}/`);
+  
+  // Mark server as ready after a brief moment
+  // This gives time for all routes to be registered
+  setTimeout(() => {
+    serverReady = true;
+    console.log(`✅ Server is ready and accepting requests`);
+  }, 100);
 });
 
 // Handle graceful shutdown
