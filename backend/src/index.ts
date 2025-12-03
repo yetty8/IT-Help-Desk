@@ -18,7 +18,11 @@ const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(",").map(url => url.trim())
   : process.env.CORS_ORIGIN 
     ? process.env.CORS_ORIGIN.split(",").map(url => url.trim())
-    : ["*"];
+    : [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://it-help-desk-1.vercel.app"
+      ];
 
 app.use(cors({
   origin: (origin, callback) => {
