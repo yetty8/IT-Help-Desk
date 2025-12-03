@@ -1,0 +1,108 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id          Int           @id @default(autoincrement())
+  email       String        @unique
+  password    String
+  name        String
+  role        Role          @default(USER)
+  isActive    Boolean       @default(true)
+  tickets     Ticket[]      @relation("ReporterTickets")
+  assigned    Ticket[]      @relation("AssigneeTickets")
+  comments    Comment[]
+  activities  ActivityLog[]
+  createdAt   DateTime      @default(now())
+}
+
+model Ticket {
+  id          Int          @id @default(autoincrement())
+  ticketNumber String      @unique @default("")
+  title       String
+  description String
+  status      TicketStatus @default(OPEN)
+  priority    Priority     @default(MEDIUM)
+  category    Category     @default(GENERAL)
+  location    String?
+  device      String?
+  dueDate     DateTime?
+  slaLevel    SLA          @default(MEDIUM)
+  fileUrl     String?
+  order       Int          @default(0)
+
+  reporter   User? @relation("ReporterTickets", fields: [reporterId], references: [id])
+  reporterId Int?
+  assignee   User? @relation("AssigneeTickets", fields: [assigneeId], references: [id])
+  assigneeId Int?
+
+  comments     Comment[]
+  activities   ActivityLog[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  body      String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId  Int
+  createdAt DateTime @default(now())
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  action    String   // "STATUS_CHANGED", "PRIORITY_CHANGED", "ASSIGNED", "COMMENT_ADDED", "FILE_UPLOADED"
+  oldValue  String?
+  newValue  String?
+  details   String?
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId  Int
+  createdAt DateTime @default(now())
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum Role {
+  USER
+  TECH
+  ADMIN
+}
+
+enum Category {
+  GENERAL
+  HARDWARE
+  SOFTWARE
+  NETWORK
+  ACCESS
+  ACCOUNT
+  OTHER
+}
+
+enum SLA {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}

@@ -1,0 +1,19 @@
+# ⚠️  WARNING: This file contains development-only credentials
+# For production, use environment variables or secrets management
+# Never use these credentials in production!
+
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      # ⚠️  DEVELOPMENT ONLY - Change these in production!
+      POSTGRES_USER: ${POSTGRES_USER:-devuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpass}
+      POSTGRES_DB: ${POSTGRES_DB:-helpdesk}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+volumes:
+  db_data:

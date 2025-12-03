@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles that respect Tailwind's dark class strategy */
+@layer base {
+  /* default (light) */
+  body {
+    @apply bg-slate-50 text-slate-800;
+  }
+
+  /* when <html class="dark"> is set by your DarkModeToggle */
+  .dark body {
+    @apply bg-slate-900 text-slate-100;
+  }
+
+  /* small helper for card-like containers */
+  .card {
+    @apply bg-white dark:bg-slate-800;
+  }
+}
+
+/* keep any other custom rules below */
