@@ -1,6 +1,6 @@
 # Vercel Deployment Guide
 
-Deploy your frontend to Vercel: https://vercel.com/yetbareks-projects
+Deploy your frontend to Vercel.
 
 ## 🚀 Quick Deployment Steps
 
@@ -16,7 +16,7 @@ git push origin main
 
 ### Step 2: Connect to Vercel
 
-1. Go to [vercel.com/yetbareks-projects](https://vercel.com/yetbareks-projects)
+1. Go to [vercel.com](https://vercel.com) and sign in
 2. Click **"Add New..."** → **"Project"**
 3. Import your GitHub repository
 4. Vercel will auto-detect it's a Vite project
@@ -145,7 +145,7 @@ Every pull request gets a preview deployment:
 
 ## 🔗 Links
 
-- **Vercel Dashboard**: https://vercel.com/yetbareks-projects
+- **Vercel Dashboard**: https://vercel.com
 - **Vercel Docs**: https://vercel.com/docs
 - **Vite + Vercel**: https://vercel.com/docs/frameworks/vite
 

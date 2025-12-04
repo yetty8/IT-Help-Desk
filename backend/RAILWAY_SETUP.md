@@ -1,7 +1,5 @@
 # Railway Project Setup
 
-Your Railway Project: https://railway.com/project/ba992519-9d9f-40b5-ac41-0a4bcdc29ba6/service/028ccea4-b540-49ee-aaf4-f8aed1a405a5
-
 ## Step 1: Link Your Local Project to Railway
 
 ### Option A: Using Railway CLI (Recommended)
@@ -17,8 +15,6 @@ railway login
 railway link
 
 # When prompted, select your project from the list
-# Or use the project ID directly:
-railway link ba992519-9d9f-40b5-ac41-0a4bcdc29ba6
 ```
 
 ### Option B: Connect via GitHub
