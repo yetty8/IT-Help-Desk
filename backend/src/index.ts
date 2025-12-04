@@ -31,7 +31,18 @@ app.use("/api/users", usersRouter);
 
 // 🔥 SERVE FRONTEND (React Build)
 const frontendPath = path.join(__dirname, "frontend/dist");
-app.use(express.static(frontendPath));
+console.log(`📁 Looking for frontend at: ${frontendPath}`);
+console.log(`📁 __dirname is: ${__dirname}`);
+console.log(`📁 Checking if frontend exists: ${require('fs').existsSync(frontendPath)}`);
+
+if (require('fs').existsSync(frontendPath)) {
+  console.log(`✅ Frontend directory found! Serving from: ${frontendPath}`);
+  app.use(express.static(frontendPath));
+} else {
+  console.error(`❌ Frontend directory NOT FOUND at: ${frontendPath}`);
+  console.error(`📁 Current working directory: ${process.cwd()}`);
+  console.error(`📁 Listing dist directory:`, require('fs').readdirSync(__dirname).join(', '));
+}
 
 // SPA fallback: serve index.html for all non-API routes (including root)
 app.get("*", (req, res) => {
