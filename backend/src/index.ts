@@ -27,10 +27,18 @@ const allowedOrigins = process.env.FRONTEND_URL
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log("CORS: Allowing request with no origin");
+      return callback(null, true);
+    }
+    
+    // Log all CORS requests for debugging
+    console.log(`CORS: Request from origin: ${origin}`);
+    console.log(`CORS: Allowed origins:`, allowedOrigins);
     
     // Allow all origins in development or if "*" is set
     if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+      console.log(`CORS: Allowing origin: ${origin}`);
       return callback(null, true);
     }
     
@@ -38,22 +46,35 @@ app.use(cors({
     const isAllowed = allowedOrigins.some(allowed => {
       if (allowed.includes("*")) {
         const pattern = allowed.replace("*", ".*");
-        return new RegExp(pattern).test(origin);
+        const matches = new RegExp(pattern).test(origin);
+        if (matches) {
+          console.log(`CORS: Pattern match - ${allowed} matches ${origin}`);
+        }
+        return matches;
       }
-      return origin === allowed;
+      const exactMatch = origin === allowed;
+      if (exactMatch) {
+        console.log(`CORS: Exact match - ${origin}`);
+      }
+      return exactMatch;
     });
     
     if (isAllowed) {
+      console.log(`CORS: ✅ Allowing origin: ${origin}`);
       callback(null, true);
     } else {
-      console.warn(`CORS blocked origin: ${origin}`);
-      callback(null, true); // Allow for now, but log warning
+      console.warn(`CORS: ❌ Blocking origin: ${origin}`);
+      console.warn(`CORS: Allowed origins are:`, allowedOrigins);
+      // Still allow for now, but log warning
+      callback(null, true);
     }
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  exposedHeaders: ["Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  exposedHeaders: ["Authorization"],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
