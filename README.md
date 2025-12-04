@@ -67,20 +67,7 @@ VITE_API_URL=http://localhost:4000/api
 
 ## Deployment
 
-This application can be deployed to:
-
-- **Backend**: Railway (See `RAILWAY_DEPLOYMENT.md` for details)
-- **Frontend**: Vercel (See `VERCEL_DEPLOYMENT.md` for details)
-
-### Environment Variables for Production
-
-**Railway (Backend)**:
-- `DATABASE_URL` - Auto-set by Railway PostgreSQL
-- `JWT_SECRET` - Strong secret key (generate with: `openssl rand -base64 32`)
-- `FRONTEND_URL` - Your frontend domain (for CORS configuration)
-
-**Vercel (Frontend)**:
-- `VITE_API_URL` - Your Railway backend URL + `/api` (e.g., `https://your-backend.up.railway.app/api`)
+Deploy the backend to Railway and frontend to Vercel. Configure environment variables as needed for your deployment platform.
 
 ## License
 
