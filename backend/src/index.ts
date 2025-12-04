@@ -55,6 +55,28 @@ app.get("/", (req, res) => {
   });
 });
 
+// Database connection test endpoint (for debugging)
+app.get("/api/test-db", async (req, res) => {
+  try {
+    const prisma = (await import("./prisma/client")).default;
+    await prisma.$queryRaw`SELECT 1 as test`;
+    res.status(200).json({ 
+      status: "ok", 
+      message: "Database connection successful",
+      databaseUrl: process.env.DATABASE_URL ? "Set (hidden)" : "NOT SET"
+    });
+  } catch (error: any) {
+    console.error("Database connection test failed:", error);
+    res.status(500).json({ 
+      status: "error",
+      message: "Database connection failed",
+      error: error?.message || "Unknown error",
+      code: error?.code,
+      databaseUrl: process.env.DATABASE_URL ? "Set (hidden)" : "NOT SET"
+    });
+  }
+});
+
 app.use("/api/auth", authRouter);
 app.use("/api/tickets", ticketRouter);
 app.use("/api/stats", statsRouter);
