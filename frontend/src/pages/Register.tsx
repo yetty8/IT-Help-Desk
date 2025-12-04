@@ -46,13 +46,36 @@ export default function Register() {
     } catch (err: any) {
       setLoading(false);
       console.error("Registration error:", err);
+      console.error("Error details:", {
+        status: err?.response?.status,
+        statusText: err?.response?.statusText,
+        data: err?.response?.data,
+        message: err?.message,
+        code: err?.code,
+        config: {
+          url: err?.config?.url,
+          baseURL: err?.config?.baseURL,
+          method: err?.config?.method
+        }
+      });
       
-      if (err?.response?.status === 0 || err?.code === "ERR_NETWORK") {
-        setError("Network error. Please check your connection.");
+      // Better error handling with more details
+      if (err?.response?.status === 0 || err?.code === "ERR_NETWORK" || err?.code === "ERR_INTERNET_DISCONNECTED") {
+        const apiUrl = API.defaults.baseURL || "NOT SET";
+        setError(`Network error. Cannot reach backend at ${apiUrl}. Please check: 1) Backend is running, 2) VITE_API_URL is set in Vercel.`);
+      } else if (err?.response?.status === 500) {
+        const errorMsg = err?.response?.data?.error || "Server error";
+        if (errorMsg.includes("Database connection")) {
+          setError(`Database connection error. The backend cannot connect to the database. Check Railway: 1) PostgreSQL database is added, 2) DATABASE_URL is set, 3) Database is running.`);
+        } else {
+          setError(`Server error: ${errorMsg}. Check Railway logs for details.`);
+        }
       } else if (err?.response?.data?.error) {
         setError(err.response.data.error);
+      } else if (err?.message) {
+        setError(`Error: ${err.message}`);
       } else {
-        setError("Registration failed. Please try again.");
+        setError("Registration failed. Please check the browser console for details.");
       }
     }
   }
