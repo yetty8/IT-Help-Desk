@@ -48,14 +48,32 @@ export async function register(req: Request, res: Response){
     res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role }, token });
   } catch (error: any) {
     console.error("Registration error:", error);
-    // Simplify error message for users
+    console.error("Error details:", {
+      message: error?.message,
+      code: error?.code,
+      meta: error?.meta,
+      name: error?.name
+    });
+    
+    // More specific error messages
     let errorMessage = "Database connection error. Please try again later.";
-    if (error?.message?.includes("denied access")) {
-      errorMessage = "Database connection failed. Please contact support.";
+    let statusCode = 500;
+    
+    if (error?.code === "P1001" || error?.message?.includes("Can't reach database server")) {
+      errorMessage = "Database server is unreachable. Check Railway: 1) PostgreSQL is running, 2) DATABASE_URL is set correctly.";
+    } else if (error?.code === "P1000" || error?.message?.includes("Authentication failed")) {
+      errorMessage = "Database authentication failed. Check DATABASE_URL in Railway.";
+    } else if (error?.code === "P2002" || error?.message?.includes("Unique constraint")) {
+      errorMessage = "A user with this email already exists.";
+      statusCode = 400;
     } else if (error?.message?.includes("User exists")) {
       errorMessage = "A user with this email already exists.";
+      statusCode = 400;
+    } else if (error?.message?.includes("denied access")) {
+      errorMessage = "Database connection failed. Please contact support.";
     }
-    res.status(500).json({ error: errorMessage });
+    
+    res.status(statusCode).json({ error: errorMessage });
   }
 }
 
@@ -99,7 +117,24 @@ export async function login(req: Request, res: Response){
     res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role }, token });
   } catch (error: any) {
     console.error("Login error:", error);
-    const errorMessage = error?.message || "Database connection error";
+    console.error("Error details:", {
+      message: error?.message,
+      code: error?.code,
+      meta: error?.meta,
+      name: error?.name
+    });
+    
+    // More specific error messages
+    let errorMessage = "Database connection error. Please try again later.";
+    
+    if (error?.code === "P1001" || error?.message?.includes("Can't reach database server")) {
+      errorMessage = "Database server is unreachable. Check Railway: 1) PostgreSQL is running, 2) DATABASE_URL is set correctly.";
+    } else if (error?.code === "P1000" || error?.message?.includes("Authentication failed")) {
+      errorMessage = "Database authentication failed. Check DATABASE_URL in Railway.";
+    } else if (error?.message) {
+      errorMessage = error.message;
+    }
+    
     res.status(500).json({ error: errorMessage });
   }
 }
