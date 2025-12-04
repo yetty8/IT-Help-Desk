@@ -113,10 +113,45 @@ Railway should auto-detect Node.js, but verify:
 - Ensure `package.json` has correct scripts
 - Verify Node.js version (Railway uses Node 18+)
 
-### Database Connection Issues
-- Verify `DATABASE_URL` is set correctly
-- Check PostgreSQL service is running
-- Ensure migrations have run: `npx prisma migrate deploy`
+### Database Connection Issues (500 Errors)
+
+If you're getting **500 errors** on register/login, the backend can't connect to the database.
+
+#### Quick Diagnosis Steps:
+
+1. **Check Railway Logs**
+   - Go to your backend service → **"Logs"** tab
+   - Look for error messages when registering
+   - Common errors:
+     - `DATABASE_URL is not set` → Database not added
+     - `Can't reach database server` → Database not running
+     - `Authentication failed` → DATABASE_URL is incorrect
+     - `relation "User" does not exist` → Migrations not run
+
+2. **Verify Database is Added**
+   - Check if you see a **PostgreSQL** service in your Railway project
+   - If missing: Click **"+ New"** → **"Database"** → **"Add PostgreSQL"**
+   - Railway will automatically set `DATABASE_URL` for your backend
+
+3. **Check Environment Variables**
+   - Go to backend service → **"Variables"** tab
+   - Verify `DATABASE_URL` exists (should be auto-set by Railway)
+
+4. **Run Database Migrations**
+   - Database tables might not exist yet
+   - Use Railway Shell: `npx prisma migrate deploy`
+   - Or Railway CLI: `railway run npx prisma migrate deploy`
+
+5. **Test Database Connection**
+   - Visit: `https://your-railway-backend.up.railway.app/api/test-db`
+   - Should return database connection status
+
+#### Common Fixes:
+
+- **Database Not Added**: Add PostgreSQL in Railway (see Step 2 above)
+- **DATABASE_URL Not Set**: Railway should auto-set it when PostgreSQL is added
+- **Migrations Not Run**: Run `npx prisma migrate deploy` (see Step 4 above)
+- **Database Service Stopped**: Check if PostgreSQL service is running and restart if needed
 
 ### File Uploads Not Working
 - Railway's file system is ephemeral
