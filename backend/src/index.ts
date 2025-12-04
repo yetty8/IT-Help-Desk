@@ -13,11 +13,14 @@ import usersRouter from "./routes/users";
 
 const app = express();
 
+// CORS configuration - uses environment variable for frontend URL
+const allowedOrigins = [
+  "http://localhost:5174",
+  process.env.FRONTEND_URL
+].filter(Boolean); // Remove undefined values
+
 app.use(cors({
-  origin: [
-    "http://localhost:5174",
-    "https://it-help-desk-1.vercel.app"
-  ],
+  origin: allowedOrigins.length > 0 ? allowedOrigins : true, // Allow all origins in dev if FRONTEND_URL not set
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
