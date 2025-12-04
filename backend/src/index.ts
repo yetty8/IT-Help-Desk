@@ -18,6 +18,11 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
+// HEALTH CHECK for Railway (must be first!)
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // API ROUTES
 app.use("/api/auth", authRouter);
 app.use("/api/tickets", ticketRouter);
@@ -25,33 +30,16 @@ app.use("/api/stats", statsRouter);
 app.use("/api/users", usersRouter);
 
 // 🔥 SERVE FRONTEND (React Build)
-// After build, frontend is at dist/frontend/dist (copied during build)
 const frontendPath = path.join(__dirname, "frontend/dist");
 app.use(express.static(frontendPath));
 
-// HEALTH CHECK for Railway (must be before catch-all route)
-app.get("/health", (req, res) => {
-  res.status(200).json({ 
-    status: "ok",
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Root endpoint for Railway
-app.get("/", (req, res) => {
-  res.status(200).json({ 
-    status: "ok",
-    service: "IT Helpdesk API",
-    timestamp: new Date().toISOString()
-  });
-});
-
-// SPA fallback: serve index.html for all non-API routes
+// SPA fallback: serve index.html for all non-API routes (including root)
 app.get("*", (req, res) => {
-  // Don't serve index.html for API routes
+  // Don't serve index.html for API routes or health check
   if (req.path.startsWith("/api") || req.path === "/health") {
     return res.status(404).json({ error: "Not found" });
   }
+  // Serve frontend for all other routes (including root)
   res.sendFile(path.join(frontendPath, "index.html"));
 });
 
@@ -61,15 +49,13 @@ const HOST = process.env.HOST || "0.0.0.0";
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`🚀 Server running at http://${HOST}:${PORT}`);
-  console.log(`✅ Health check: http://${HOST}:${PORT}/health`);
-  console.log(`✅ Frontend path: ${frontendPath}`);
+  console.log(`✅ Frontend served from: ${frontendPath}`);
 });
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully...');
   server.close(() => {
-    console.log('Server closed');
     process.exit(0);
   });
 });
@@ -77,7 +63,6 @@ process.on('SIGTERM', () => {
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully...');
   server.close(() => {
-    console.log('Server closed');
     process.exit(0);
   });
 });
