@@ -65,8 +65,29 @@ VITE_API_URL=http://localhost:4000/api
 - Backend runs on `http://localhost:4000`
 - Frontend runs on `http://localhost:5173`
 
+## Deployment
+
+This application is deployed to:
+
+- **Backend**: Railway (See `RAILWAY_DEPLOYMENT.md` for details)
+- **Frontend**: Vercel (See `VERCEL_DEPLOYMENT.md` for details)
+
+### Quick Links
+
+- Production Frontend: https://it-help-desk-1.vercel.app
+- Railway Project: https://railway.com/project/ba992519-9d9f-40b5-ac41-0a4bcdc29ba6
+- Vercel Project: https://vercel.com/yetbareks-projects
+
+### Environment Variables for Production
+
+**Railway (Backend)**:
+- `DATABASE_URL` - Auto-set by Railway PostgreSQL
+- `JWT_SECRET` - Strong secret key
+- `FRONTEND_URL` - https://it-help-desk-1.vercel.app
+
+**Vercel (Frontend)**:
+- `VITE_API_URL` - Your Railway backend URL + `/api` (e.g., `https://your-backend.up.railway.app/api`)
+
 ## License
 
 MIT
-
-# IT-Help-Desk
