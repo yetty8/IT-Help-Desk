@@ -144,9 +144,14 @@ export default function CreateTicket() {
           <div>Base URL: <span className="font-mono text-xs">{API.defaults.baseURL}</span></div>
           <div>Environment: {import.meta.env.MODE}</div>
           <div>VITE_API_URL: {import.meta.env.VITE_API_URL || "NOT SET"}</div>
-          {!import.meta.env.VITE_API_URL && (
+          {!import.meta.env.VITE_API_URL && import.meta.env.PROD && (
             <div className="text-red-600 dark:text-red-400 mt-2 font-semibold">
               ⚠️ VITE_API_URL not set! Set it in Vercel environment variables.
+            </div>
+          )}
+          {!import.meta.env.VITE_API_URL && import.meta.env.DEV && (
+            <div className="text-blue-600 dark:text-blue-400 mt-2">
+              ℹ️ Using localhost API (development mode - this is normal)
             </div>
           )}
         </div>
