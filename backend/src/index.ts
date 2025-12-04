@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 
 // Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
@@ -33,15 +34,15 @@ app.use("/api/users", usersRouter);
 const frontendPath = path.join(__dirname, "frontend/dist");
 console.log(`📁 Looking for frontend at: ${frontendPath}`);
 console.log(`📁 __dirname is: ${__dirname}`);
-console.log(`📁 Checking if frontend exists: ${require('fs').existsSync(frontendPath)}`);
+console.log(`📁 Checking if frontend exists: ${fs.existsSync(frontendPath)}`);
 
-if (require('fs').existsSync(frontendPath)) {
+if (fs.existsSync(frontendPath)) {
   console.log(`✅ Frontend directory found! Serving from: ${frontendPath}`);
   app.use(express.static(frontendPath));
 } else {
   console.error(`❌ Frontend directory NOT FOUND at: ${frontendPath}`);
   console.error(`📁 Current working directory: ${process.cwd()}`);
-  console.error(`📁 Listing dist directory:`, require('fs').readdirSync(__dirname).join(', '));
+  console.error(`📁 Listing dist directory:`, fs.existsSync(__dirname) ? fs.readdirSync(__dirname).join(', ') : 'dist dir does not exist');
 }
 
 // SPA fallback: serve index.html for all non-API routes (including root)
