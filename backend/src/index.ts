@@ -13,68 +13,14 @@ import usersRouter from "./routes/users";
 
 const app = express();
 
-// CORS configuration - update allowed origins for production
-const allowedOrigins = process.env.FRONTEND_URL 
-  ? process.env.FRONTEND_URL.split(",").map(url => url.trim())
-  : process.env.CORS_ORIGIN 
-    ? process.env.CORS_ORIGIN.split(",").map(url => url.trim())
-    : [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "https://it-help-desk-1.vercel.app"
-      ];
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) {
-      console.log("CORS: Allowing request with no origin");
-      return callback(null, true);
-    }
-    
-    // Log all CORS requests for debugging
-    console.log(`CORS: Request from origin: ${origin}`);
-    console.log(`CORS: Allowed origins:`, allowedOrigins);
-    
-    // Allow all origins in development or if "*" is set
-    if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
-      console.log(`CORS: Allowing origin: ${origin}`);
-      return callback(null, true);
-    }
-    
-    // Check if origin matches any allowed pattern
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (allowed.includes("*")) {
-        const pattern = allowed.replace("*", ".*");
-        const matches = new RegExp(pattern).test(origin);
-        if (matches) {
-          console.log(`CORS: Pattern match - ${allowed} matches ${origin}`);
-        }
-        return matches;
-      }
-      const exactMatch = origin === allowed;
-      if (exactMatch) {
-        console.log(`CORS: Exact match - ${origin}`);
-      }
-      return exactMatch;
-    });
-    
-    if (isAllowed) {
-      console.log(`CORS: ✅ Allowing origin: ${origin}`);
-      callback(null, true);
-    } else {
-      console.warn(`CORS: ❌ Blocking origin: ${origin}`);
-      console.warn(`CORS: Allowed origins are:`, allowedOrigins);
-      // Still allow for now, but log warning
-      callback(null, true);
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
-  exposedHeaders: ["Authorization"],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
+  origin: [
+    "http://localhost:5174",
+    "https://it-help-desk-1.vercel.app"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
