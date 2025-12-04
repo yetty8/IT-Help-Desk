@@ -54,9 +54,13 @@ export default function CreateTicket() {
         return;
       }
 
+      // Ensure token is set in API defaults
+      API.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
       // Log API details for debugging
       console.log("Creating ticket with API:", API.defaults.baseURL);
       console.log("Token present:", !!token);
+      console.log("Authorization header:", API.defaults.headers.common["Authorization"] ? "Set" : "Missing");
 
       // 🔥 Send as multipart form (supports file upload)
       const formData = new FormData();
@@ -69,10 +73,12 @@ export default function CreateTicket() {
         console.log("Including file:", file.name, file.size, "bytes");
       }
 
+      // For multipart/form-data, let axios set Content-Type automatically
+      // But explicitly include Authorization header
       const response = await API.post("/tickets", formData, {
         headers: { 
-          "Content-Type": "multipart/form-data",
           "Authorization": `Bearer ${token}`
+          // Don't set Content-Type - axios will set it with boundary for multipart
         },
       });
 

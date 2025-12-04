@@ -37,9 +37,32 @@ console.log("🌍 Environment:", import.meta.env.MODE);
 console.log("📦 VITE_API_URL:", import.meta.env.VITE_API_URL || "NOT SET");
 
 export function setToken(token?: string) {
-  if (token) API.defaults.headers.common["Authorization"] = "Bearer " + token;
-  else delete API.defaults.headers.common["Authorization"];
+  if (token) {
+    API.defaults.headers.common["Authorization"] = "Bearer " + token;
+    console.log("✅ Token set in API defaults");
+  } else {
+    delete API.defaults.headers.common["Authorization"];
+    console.log("❌ Token removed from API defaults");
+  }
 }
+
+// Request interceptor to ensure token is always included
+API.interceptors.request.use(
+  (config) => {
+    // Get token from localStorage if not already in headers
+    if (!config.headers["Authorization"]) {
+      const token = localStorage.getItem("token");
+      if (token) {
+        config.headers["Authorization"] = `Bearer ${token}`;
+        console.log("🔑 Token added to request from localStorage");
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 API.interceptors.response.use(
   (res) => res,
