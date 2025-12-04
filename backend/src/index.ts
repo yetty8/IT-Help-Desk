@@ -29,9 +29,21 @@ app.use("/api/users", usersRouter);
 const frontendPath = path.join(__dirname, "frontend/dist");
 app.use(express.static(frontendPath));
 
-// HEALTH CHECK for Railway (before catch-all route)
+// HEALTH CHECK for Railway (must be before catch-all route)
 app.get("/health", (req, res) => {
-  res.status(200).send("OK");
+  res.status(200).json({ 
+    status: "ok",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Root endpoint for Railway
+app.get("/", (req, res) => {
+  res.status(200).json({ 
+    status: "ok",
+    service: "IT Helpdesk API",
+    timestamp: new Date().toISOString()
+  });
 });
 
 // SPA fallback: serve index.html for all non-API routes
@@ -47,6 +59,25 @@ app.get("*", (req, res) => {
 const PORT = Number(process.env.PORT) || 4000;
 const HOST = process.env.HOST || "0.0.0.0";
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`🚀 Server running at http://${HOST}:${PORT}`);
+  console.log(`✅ Health check: http://${HOST}:${PORT}/health`);
+  console.log(`✅ Frontend path: ${frontendPath}`);
+});
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });

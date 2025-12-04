@@ -1,26 +1,16 @@
 // src/api.ts
 import axios from "axios";
 
-// Get API URL from environment or use relative path for same domain
+// Get API URL - use relative path when served from same origin
 const getApiUrl = () => {
-  // In production, use environment variable
-  const envUrl = import.meta.env.VITE_API_URL;
-  
-  if (envUrl) {
-    // Remove trailing slash if present
-    return envUrl.replace(/\/$/, "");
-  }
-  
-  // Last resort: localhost for development
-  const devUrl = "http://localhost:4000/api";
-  
-  // Log warning if in production but no API URL set
+  // When frontend is served from backend, use relative path (no CORS needed)
+  // In production, backend serves frontend, so use relative path
   if (import.meta.env.PROD) {
-    console.error("⚠️ VITE_API_URL not set! API calls will fail.");
-    console.error("Please set VITE_API_URL in Vercel environment variables");
+    return "/api";
   }
   
-  return devUrl;
+  // Development: Use localhost for separate dev server
+  return "http://localhost:4000/api";
 };
 
 const API_BASE_URL = getApiUrl();
