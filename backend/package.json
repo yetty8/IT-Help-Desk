@@ -1,17 +1,20 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "type": "commonjs",
+  "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "cd ../frontend && npm install && npm run build && cd ../backend && tsc && rm -rf dist/frontend && mkdir -p dist/frontend && cp -r ../frontend/dist/* dist/frontend",
+
+    "build": "echo '📦 Building full project...' && cd ../frontend && npm install && npm run build && cd ../backend && rm -rf dist && tsc && echo '📁 Copying frontend to backend/dist/frontend...' && mkdir -p dist/frontend && cp -R ../frontend/dist/* dist/frontend/ && echo '✅ Build complete!'",
+
     "start": "node dist/index.js",
+
     "postinstall": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:generate": "prisma generate",
-    "prisma:deploy": "prisma migrate deploy",
-    "seed": "ts-node src/prisma/seed.ts"
+    "prisma:deploy": "prisma migrate deploy"
   },
+  "type": "commonjs",
   "dependencies": {
     "@types/multer": "^2.0.0",
     "@types/pg": "^8.15.6",
