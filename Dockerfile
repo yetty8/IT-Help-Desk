@@ -7,8 +7,12 @@ WORKDIR /app
 # ----------------------
 # Backend dependencies
 # ----------------------
+# Copy package files and Prisma schema first for caching
 COPY backend/package*.json backend/
 COPY backend/tsconfig.json backend/
+COPY backend/prisma backend/prisma/
+
+# Install backend dependencies (prisma generate will now work)
 RUN cd backend && npm install --include=dev
 
 # ----------------------
