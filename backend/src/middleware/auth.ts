@@ -12,7 +12,8 @@ const getJwtSecret = (): string => {
 };
 
 export interface AuthRequest extends Request {
-  user?: { userId: number; role: string; }
+  user?: { userId: number; role: string; };
+  file?: Express.Multer.File;
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction){
