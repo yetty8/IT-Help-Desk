@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import path from "path";
-import fs from "fs";
 import express from "express";
+import cors from "cors";
 
 import authRouter from "./routes/auth";
 import ticketRouter from "./routes/tickets";
@@ -12,6 +12,33 @@ import usersRouter from "./routes/users";
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const app = express();
+
+// CORS Configuration - Allow requests from Vercel frontend
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+].filter(Boolean); // Remove undefined values
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.includes(origin) || !process.env.FRONTEND_URL) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -33,45 +60,9 @@ app.use("/api/tickets", ticketRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/users", usersRouter);
 
-// ---------------------------
-// 🚀 FRONTEND SETUP
-// ---------------------------
-
-const frontendPath = path.join(__dirname, "../frontend/dist");
-const indexHtml = path.join(frontendPath, "index.html");
-
-console.log("📁 __dirname:", __dirname);
-console.log("📁 Looking for frontend at:", frontendPath);
-console.log("📁 Frontend exists:", fs.existsSync(frontendPath));
-
-// Serve static frontend files
-if (fs.existsSync(frontendPath)) {
-  console.log("✅ Frontend FOUND! Serving static files.");
-  app.use(express.static(frontendPath));
-} else {
-  console.error("❌ Frontend not found. Build it with npm run build.");
-}
-
-// ---------------------------
-// SPA FALLBACK (EXPRESS 5 FIX)
-// ---------------------------
-// Express 5 DOES NOT support "*" or "/*"
-// Use a REGEX instead → works 100%
-app.get(/.*/, (req, res) => {
-  // Allow API & uploads to behave normally
-  if (
-    req.path.startsWith("/api") ||
-    req.path.startsWith("/uploads") ||
-    req.path === "/health"
-  ) {
-    return res.status(404).json({ error: "Not found" });
-  }
-
-  if (fs.existsSync(indexHtml)) {
-    return res.sendFile(indexHtml);
-  } else {
-    return res.status(500).send("Frontend not built. Run npm run build.");
-  }
+// 404 handler for API routes
+app.use("/api/*", (req, res) => {
+  res.status(404).json({ error: "API endpoint not found" });
 });
 
 // ---------------------------
@@ -81,8 +72,8 @@ const PORT = Number(process.env.PORT) || 4000;
 const HOST = process.env.HOST || "0.0.0.0";
 
 app.listen(PORT, HOST, () => {
-  console.log(`🚀 Server running at http://${HOST}:${PORT}`);
-  console.log(`📁 Serving frontend from: ${frontendPath}`);
+  console.log(`🚀 Backend API running at http://${HOST}:${PORT}`);
+  console.log(`✅ CORS enabled for: ${allowedOrigins.join(", ") || "all origins"}`);
 });
 
 // Graceful shutdown
