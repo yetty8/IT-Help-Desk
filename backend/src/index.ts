@@ -82,3 +82,4 @@ process.on("SIGINT", () => {
   console.log("SIGINT received, shutting down gracefully...");
   process.exit(0);
 });
+// Railway deployment trigger - Thu Dec  4 19:11:48 EST 2025
