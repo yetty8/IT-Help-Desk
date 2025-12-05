@@ -5,7 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "dev": "ts-node-dev --respawn src/index.ts",
-    "build": "echo '📦 Building frontend...' && cd ../frontend && npm install && npm run build && cd ../backend && tsc && echo '📁 Copying frontend into backend/dist/frontend...' && rm -rf dist/frontend && mkdir -p dist/frontend && cp -R ../frontend/dist/* dist/frontend && echo '✅ Build Complete!'",
+    "build": "echo '📦 Building frontend...' && cd frontend && npm install && npm run build && cd .. && tsc && echo '📁 Copying frontend into backend/dist/frontend...' && rm -rf dist/frontend && mkdir -p dist/frontend && cp -R frontend/dist/* dist/frontend && echo '✅ Build Complete!'",
     "start": "node dist/index.js",
     "postinstall": "prisma generate"
   },
