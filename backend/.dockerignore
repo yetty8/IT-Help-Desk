@@ -12,3 +12,8 @@ README.md
 uploads
 *.md
 
+node_modules
+dist
+*.log
+.env
+.vscode
