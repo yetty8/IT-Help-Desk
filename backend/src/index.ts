@@ -1,3 +1,4 @@
+// backend/src/index.ts
 import dotenv from "dotenv";
 import path from "path";
 import express from "express";
@@ -25,10 +26,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, Postman, etc.)
       if (!origin) return callback(null, true);
-      
-      // Allow if in allowedOrigins list, or if FRONTEND_URL is not set (dev mode)
       if (allowedOrigins.includes(origin) || !process.env.FRONTEND_URL) {
         callback(null, true);
       } else {
@@ -37,8 +35,8 @@ app.use(
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET","POST","PUT","DELETE","PATCH","OPTIONS"],
+    allowedHeaders: ["Content-Type","Authorization"],
   })
 );
 
@@ -63,8 +61,8 @@ app.use("/api/tickets", ticketRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/users", usersRouter);
 
-// 404 handler for API routes
-app.use("/api/*", (req, res) => {
+// 404 handler for API routes — updated for Express 5 compatibility
+app.use(/^\/api\/.*/, (req, res) => {
   res.status(404).json({ error: "API endpoint not found" });
 });
 
