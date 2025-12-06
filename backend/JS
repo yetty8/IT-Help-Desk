@@ -1,0 +1,5 @@
+
+> backend@1.0.0 build
+> tsc # compile TS - in backend/dist
+
+error TS5023: Unknown compiler option '-'.
