@@ -2,20 +2,19 @@ import dotenv from "dotenv";
 import path from "path";
 import express from "express";
 import cors from "cors";
-
 import authRouter from "./routes/auth";
 import ticketsRouter from "./routes/tickets";
 import statsRouter from "./routes/stats";
 import usersRouter from "./routes/users";
 
-// Load .env
+// Load .env file
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const app = express();
 
-// CORS
+// CORS configuration
 const allowedOrigins = [
-  process.env.FRONTEND_URL, // should be set to https://it-help-desk-1.vercel.app
+  process.env.FRONTEND_URL,
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:3000",
@@ -56,7 +55,7 @@ app.use("/api", (req, res) => {
   res.status(404).json({ error: "API endpoint not found" });
 });
 
-// Use Railway dynamic PORT or fallback
+// Use the PORT Railway gives us, default 8080 locally
 const PORT = Number(process.env.PORT) || 8080;
 const HOST = "0.0.0.0";
 
