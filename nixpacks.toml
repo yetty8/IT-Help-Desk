@@ -1,23 +1,16 @@
 # --- Install Dependencies ---
 [phases.setup]
-aptPkgs = ["nodejs", "npm"]
+aptPkgs = ["nodejs-18_x", "npm"]
 
 [phases.install]
 cmds = [
-  "cd backend && npm install",
-  "cd backend/frontend && npm install"
+  "cd backend && npm ci --include=dev"
 ]
 
-# --- Build Frontend ---
+# --- Build Backend Only (API-only, no frontend) ---
 [phases.build]
 cmds = [
-  "cd backend/frontend && npm run build"
-]
-
-# --- Move Dist Into Backend (Railway needs this) ---
-[phases.buildDist]
-cmds = [
-  "mv backend/frontend/dist backend/frontend-dist"
+  "cd backend && npm run build"
 ]
 
 # --- Start Server ---

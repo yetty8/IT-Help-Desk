@@ -16,6 +16,7 @@ const app = express();
 // CORS Configuration - Allow requests from Vercel frontend
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  "https://it-help-desk-1.vercel.app", // Your Vercel frontend
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:3000",
@@ -27,9 +28,11 @@ app.use(
       // Allow requests with no origin (like mobile apps, Postman, etc.)
       if (!origin) return callback(null, true);
       
+      // Allow if in allowedOrigins list, or if FRONTEND_URL is not set (dev mode)
       if (allowedOrigins.includes(origin) || !process.env.FRONTEND_URL) {
         callback(null, true);
       } else {
+        console.warn(`CORS blocked origin: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       }
     },
