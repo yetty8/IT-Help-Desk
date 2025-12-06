@@ -13,24 +13,25 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const app = express();
 
-// CORS Configuration
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:3000",
-].filter(Boolean);
+// CORS Configuration - must be before all routes
+const corsOptions = {
+  origin: [
+    "https://it-help-desk-1.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3000",
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+};
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error("Not allowed by CORS"));
-  },
-  methods: ["GET","POST","PUT","DELETE","PATCH","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"],
-  credentials: true
-}));
+app.use(cors(corsOptions));
+
+// Explicitly handle OPTIONS preflight for all routes
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -62,5 +63,5 @@ const HOST = process.env.HOST || "0.0.0.0";
 
 app.listen(PORT, HOST, () => {
   console.log(`🚀 API running at http://${HOST}:${PORT}`);
-  console.log(`✅ CORS enabled for: ${allowedOrigins.join(", ")}`);
+  console.log(`✅ CORS enabled for: https://it-help-desk-1.vercel.app, http://localhost:5173, http://localhost:5174, http://localhost:3000`);
 });
