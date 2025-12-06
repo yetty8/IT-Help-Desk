@@ -1,4 +1,3 @@
-// backend/src/index.ts
 import dotenv from "dotenv";
 import path from "path";
 import express from "express";
@@ -14,76 +13,65 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const app = express();
 
-// CORS Configuration - Allow requests from Vercel frontend
+// CORS
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  "https://it-help-desk-1.vercel.app", // Your Vercel frontend
+  "https://it-help-desk-1.vercel.app",
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:3000",
-].filter(Boolean); // Remove undefined values
+].filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin) || !process.env.FRONTEND_URL) {
-        callback(null, true);
-      } else {
-        console.warn(`CORS blocked origin: ${origin}`);
-        callback(new Error("Not allowed by CORS"));
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
       }
+
+      console.warn("Blocked by CORS:", origin);
+      return callback(new Error("CORS not allowed"), false);
     },
     credentials: true,
-    methods: ["GET","POST","PUT","DELETE","PATCH","OPTIONS"],
-    allowedHeaders: ["Content-Type","Authorization"],
+    methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    allowedHeaders: "Content-Type, Authorization",
   })
 );
+
+// Handle OPTIONS preflight for ALL routes
+app.options("*", cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Uploads folder
+// Static uploads
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-// Health check
+// Health
 app.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "ok",
-    service: "IT Helpdesk API",
-    ready: true,
-  });
+  res.json({ status: "ok", service: "IT Helpdesk API" });
 });
 
-// API routes
+// Routes
 app.use("/api/auth", authRouter);
 app.use("/api/tickets", ticketRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/users", usersRouter);
 
-// 404 handler for API routes — updated for Express 5 compatibility
-app.use(/^\/api\/.*/, (req, res) => {
-  res.status(404).json({ error: "API endpoint not found" });
+// 404 for unknown API routes — NO WILDCARD EXPRESS SYNTAX
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "API endpoint not found" });
+  }
+  next();
 });
 
-// ---------------------------
-// START SERVER
-// ---------------------------
-const PORT = Number(process.env.PORT) || 4000;
+const PORT = process.env.PORT || 4000;
 const HOST = process.env.HOST || "0.0.0.0";
 
 app.listen(PORT, HOST, () => {
-  console.log(`🚀 Backend API running at http://${HOST}:${PORT}`);
-  console.log(`✅ CORS enabled for: ${allowedOrigins.join(", ") || "all origins"}`);
-});
-
-// Graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down...");
-  process.exit(0);
-});
-
-process.on("SIGINT", () => {
-  console.log("SIGINT received, shutting down...");
-  process.exit(0);
+  console.log(`🚀 API running at http://${HOST}:${PORT}`);
+  console.log("Allowed origins:", allowedOrigins);
 });
