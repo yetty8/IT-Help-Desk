@@ -1,26 +1,25 @@
 import axios from "axios";
 
-// API URL: Use VITE_API_URL from Vercel, fallback for dev
-const getApiUrl = () => {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl) return envUrl;
-  if (import.meta.env.PROD) return "/api";
-  return "http://localhost:4000/api";
-};
+// Determine API base URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
-const API_BASE_URL = getApiUrl();
-
+// Create Axios instance
 const API = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: false,
+  withCredentials: false, // Set true if you want cookies
   timeout: 30000
 });
 
+// Set Authorization token dynamically
 export function setToken(token?: string) {
-  if (token) API.defaults.headers.common["Authorization"] = "Bearer " + token;
-  else delete API.defaults.headers.common["Authorization"];
+  if (token) {
+    API.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete API.defaults.headers.common["Authorization"];
+  }
 }
 
+// Request interceptor to attach token from localStorage if missing
 API.interceptors.request.use((config) => {
   if (!config.headers["Authorization"]) {
     const token = localStorage.getItem("token");
@@ -29,6 +28,7 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
+// Response interceptor for 401 errors
 API.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -41,12 +41,17 @@ API.interceptors.response.use(
   }
 );
 
+// Decode JWT token without using extra libraries
 export function decodeToken(token: string | null) {
   if (!token) return null;
   try {
     const payload = token.split(".")[1];
-    const json = decodeURIComponent(atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
-      .split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
+    const json = decodeURIComponent(
+      atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
     return JSON.parse(json);
   } catch {
     return null;
