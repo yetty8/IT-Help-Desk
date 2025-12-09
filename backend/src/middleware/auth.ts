@@ -10,13 +10,37 @@ const getJwtSecret = (): string => {
   }
   return JWT_SECRET;
 };
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const authReq = req as AuthRequest;
+  const auth = authReq.headers.authorization;
+  
+  if (!auth) {
+    console.log('No authorization header');
+    return res.status(401).json({ error: "Missing authorization header" });
+  }
+
+  const token = auth.split(" ")[1];
+  if (!token) {
+    console.log('No token found in authorization header');
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  try {
+    const payload = jwt.verify(token, getJwtSecret()) as any;
+    authReq.user = { userId: payload.userId, role: payload.role };
+    next();
+  } catch (e) {
+    console.error('Token verification failed:', e);
+    res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
 
 export interface AuthRequest extends Request {
   user?: { userId: number; role: string; };
   file?: Express.Multer.File;
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction){
+export function requireAuthFrontend(req: Request, res: Response, next: NextFunction){
   const authReq = req as AuthRequest;
   const auth = authReq.headers.authorization;
   if(!auth) return res.status(401).json({ error: "Missing auth" });

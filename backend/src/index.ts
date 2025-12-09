@@ -26,17 +26,19 @@ const allowedOrigins = [
   "http://localhost:3000",
 ].filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error(`CORS blocked for: ${origin}`));
-    },
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  })
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  exposedHeaders: ['Content-Range', 'X-Total-Count']
+})
 );
 
 /* ------------------------------- MIDDLEWARE ------------------------------- */
@@ -66,7 +68,7 @@ const prisma = new PrismaClient();
 prisma
   .$connect()
   .then(() => console.log("✅ Prisma connected successfully"))
-  .catch((err) => {
+  .catch((err: Error) => {
     console.error("❌ Prisma connection failed:", err.message);
     process.exit(1); // Stop container if DB unreachable
   });
