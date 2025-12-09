@@ -2,6 +2,10 @@ import axios from "axios";
 
 // Determine API base URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+const token = localStorage.getItem('token');
+if (token) {
+  axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+}
 
 // Create Axios instance
 const API = axios.create({

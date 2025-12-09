@@ -82,9 +82,14 @@ export default function CreateTicket() {
         },
       });
 
-      console.log("Ticket created successfully:", response.data);
-      setLoading(false);
+    console.log("Ticket created successfully:", response.data);
+    setLoading(false);
+
+    // Show success message and then redirect
+    setError("Ticket created successfully! Redirecting...");
+    setTimeout(() => {
       nav("/");
+    }, 1500);
     } catch (err: any) {
       setLoading(false);
       console.error("Create ticket error:", err);
