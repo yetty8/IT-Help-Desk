@@ -67,9 +67,10 @@ prisma
   .$connect()
   .then(() => console.log("✅ Prisma connected successfully"))
   .catch((err) => {
-    console.error("❌ Prisma connection failed:", err);
-    process.exit(1); // Stop container if DB is unreachable
+    console.error("❌ Prisma connection failed:", err.message);
+    process.exit(1); // Stop container if DB unreachable
   });
+
 
 /* ------------------------------- SERVER START ------------------------------- */
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
