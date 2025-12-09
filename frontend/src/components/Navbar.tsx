@@ -6,35 +6,50 @@ import { useAuth } from "../context/AuthContext";
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(
+  localStorage.getItem('theme') === 'dark' || 
+  (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
+);
 
   // Load initial preference
   useEffect(() => {
-    const saved = localStorage.theme;
-    if (saved === "dark") {
-      setDarkMode(true);
-      document.documentElement.classList.add("dark");
+    // Check for saved preference or system preference
+    const savedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    const initialDarkMode = savedTheme 
+      ? savedTheme === 'dark' 
+      : systemPrefersDark;
+    
+    setDarkMode(initialDarkMode);
+    
+    // Apply the theme
+    if (initialDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
   }, []);
 
-  // Update theme when toggled
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.theme = "dark";
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
     } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.theme = "light";
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
     }
-  }, [darkMode]);
+  };
 
   function handleLogout() {
     logout();
     navigate("/login");
   }
 
-  return (
+    return (
     <nav className="w-full bg-white dark:bg-slate-900 shadow px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 
       {/* Logo */}
@@ -103,13 +118,13 @@ export default function Navbar() {
 
         {/* Dark Mode Toggle */}
         <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-xl"
-          style={{ minHeight: "44px", minWidth: "44px", display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
-          {darkMode ? "☀️" : "🌙"}
-        </button>
-
+        onClick={toggleDarkMode}  // Updated this line
+        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-xl"
+        style={{ minHeight: "44px", minWidth: "44px", display: "flex", alignItems: "center", justifyContent: "center" }}
+        aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+      >
+        {darkMode ? "☀️" : "🌙"}
+      </button>
       </div>
     </nav>
   );
