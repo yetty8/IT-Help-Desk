@@ -1,170 +1,302 @@
-// src/pages/Login.tsx
-import React, { useState } from "react";
-import API from "../api";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import LoadingSpinner from "../components/LoadingSpinner";
-import ErrorAlert from "../components/ErrorAlert";
-import { setToken } from "../api";
+import React, { useState, useEffect, FormEvent } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import API, { ApiError } from '../api';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorAlert from '../components/ErrorAlert';
 
-export default function Login() {
-  const { login, isAuthenticated } = useAuth();
-  const nav = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+interface LoginFormData {
+  email: string;
+  password: string;
+}
+
+const Login: React.FC = () => {
+  const [formData, setFormData] = useState<LoginFormData>({
+    email: '',
+    password: '',
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [apiUrl, setApiUrl] = useState<string>("");
+  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isAuthenticated } = useAuth();
 
-    React.useEffect(() => {
+  // Redirect if already authenticated
+  useEffect(() => {
     if (isAuthenticated) {
-      nav("/");
+      const from = (location.state as { from?: Location })?.from?.pathname || '/';
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, nav]);
-  // Log API URL on mount for debugging
-  React.useEffect(() => {
-    const url = (import.meta.env.VITE_API_URL || API.defaults.baseURL || "") as string;
-    setApiUrl(url);
-    console.log("Login page - API URL:", url);
-    
-    // Test API connection on mount
-      const testConnection = async () => {
+  }, [isAuthenticated, navigate, location]);
+
+  // Test API connection
+  useEffect(() => {
+    const testConnection = async () => {
       try {
-        await API.get("/health");
-        console.log("✅ API connection test successful");
+        await API.get('/auth/check');
+        setApiStatus('online');
       } catch (err) {
-        console.error("❌ API connection test failed:", err);
-        console.error("API URL being used:", API.defaults.baseURL);
+        setApiStatus('offline');
       }
     };
-    
+
     testConnection();
   }, []);
 
-  const validateEmail = (email: string) => {
+  const validateEmail = (email: string): boolean => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
   };
 
-async function submit(e: React.FormEvent) {
-  e.preventDefault();
-  setError(null);
-  
-  // Validate inputs
-  if (!email || !password) {
-    setError("Email and password are required");
-    return;
-  }
-  
-  const trimmedEmail = email.trim().toLowerCase();
-  const trimmedPassword = password.trim();
-  
-  if (!trimmedEmail || !trimmedPassword) {
-    setError("Email and password are required");
-    return;
-  }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value.trim() }));
+    setError(null);
+  };
 
-  if (!validateEmail(trimmedEmail)) {
-    setError("Please enter a valid email address");
-    return;
-  }
-  
-  try {
-    setLoading(true);
-    const res = await API.post("/auth/login", { 
-      email: trimmedEmail, 
-      password: trimmedPassword 
-    });
-    
-    const { token, user } = res.data;
-    setToken(token);
-    login(token, user);
-    nav("/", { replace: true });
-    
-  } catch (err: any) {
-    console.error("Login error:", err);
-    console.error("Error details:", {
-      status: err?.response?.status,
-      statusText: err?.response?.statusText,
-      data: err?.response?.data,
-      message: err?.message,
-      code: err?.code,
-      config: {
-        url: err?.config?.url,
-        baseURL: err?.config?.baseURL,
-        method: err?.config?.method
-      }
-    });
-    
-    // Better error handling
-    if (err?.response?.status === 401) {
-      setError("Invalid email or password");
-    } else if (err?.response?.status === 0 || err?.code === "ERR_NETWORK" || err?.code === "ERR_INTERNET_DISCONNECTED") {
-      const apiUrl = API.defaults.baseURL || "NOT SET";
-      setError(`Network error. Cannot reach backend at ${apiUrl}. Please check: 1) Backend is running, 2) VITE_API_URL is set in Vercel.`);
-    } else if (err?.response?.status === 500) {
-      const errorMsg = err?.response?.data?.error || "Server error";
-      if (errorMsg.includes("Database connection")) {
-        setError(`Database connection error. The backend cannot connect to the database. Check Railway: 1) PostgreSQL database is added, 2) DATABASE_URL is set, 3) Database is running.`);
-      } else {
-        setError(`Server error: ${errorMsg}. Check Railway logs for details.`);
-      }
-    } else if (err?.response?.data?.error) {
-      setError(err.response.data.error);
-    } else if (err?.message) {
-      setError(`Error: ${err.message}`);
-    } else {
-      setError("Login failed. Please try again.");
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    // Validation
+    if (!formData.email || !formData.password) {
+      setError('Email and password are required');
+      return;
     }
-  } finally {
-    setLoading(false);
-  }
-}
+
+    if (!validateEmail(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    if (apiStatus === 'offline') {
+      setError('Cannot connect to the server. Please check your internet connection.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await API.post('/auth/login', {
+        email: formData.email.toLowerCase(),
+        password: formData.password,
+      });
+
+      const { token, user } = response.data;
+      login(token, user);
+      
+      // Redirect to the previous location or home
+      const from = (location.state as { from?: Location })?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    } catch (err) {
+      const error = err as AxiosError<ApiError>;
+
+      if (error.response) {
+        switch (error.response.status) {
+          case 401:
+            setError('Invalid email or password');
+            break;
+          case 429:
+            setError('Too many login attempts. Please try again later.');
+            break;
+          default:
+            setError(error.response.data?.message || 'Login failed. Please try again.');
+        }
+      } else if (error.request) {
+        setError('Network error. Please check your internet connection.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="max-w-md mx-auto">
-      <form onSubmit={submit} className="bg-white dark:bg-slate-800 p-6 rounded shadow space-y-4">
-        <h2 className="text-xl font-semibold dark:text-slate-100">Login</h2>
-        <ErrorAlert message={error} />
-        
-        {/* Debug info - visible in production to help diagnose mobile issues */}
-        <div className="text-xs text-gray-500 dark:text-gray-400 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
-          <div className="font-semibold mb-1">🔍 Debug Info:</div>
-          <div>API URL: <span className="font-mono">{apiUrl || "NOT SET"}</span></div>
-          <div>Base URL: <span className="font-mono">{API.defaults.baseURL}</span></div>
-          {!import.meta.env.VITE_API_URL && (
-            <div className="text-red-600 dark:text-red-400 mt-1 font-semibold">
-              ⚠️ VITE_API_URL not set! Set it in Vercel environment variables.
-            </div>
-          )}
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+            Sign in to your account
+          </h2>
         </div>
         
-        <input 
-          className="w-full border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 p-2 rounded" 
-          value={email} 
-          onChange={e => setEmail(e.target.value)} 
-          placeholder="Email" 
-          type="email"
-          autoComplete="email"
-          autoCapitalize="none"
-        />
-        <input 
-          className="w-full border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 p-2 rounded" 
-          value={password} 
-          onChange={e => setPassword(e.target.value)} 
-          placeholder="Password" 
-          type="password"
-          autoComplete="current-password"
-        />
-        <button 
-          type="submit" 
-          disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? <LoadingSpinner size={1.2} /> : null}
-          <span className="ml-2">{loading ? "Logging in..." : "Login"}</span>
-        </button>
-      </form>
+        <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {apiStatus === 'offline' && (
+            <div className="mb-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-5 w-5 text-red-500"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    Cannot connect to the server. Please check your internet connection.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <ErrorAlert message={error} />
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Email address
+              </label>
+              <div className="mt-1">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  disabled={loading || apiStatus === 'checking'}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Password
+              </label>
+              <div className="mt-1">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  disabled={loading || apiStatus === 'checking'}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600"
+                />
+                <label
+                  htmlFor="remember-me"
+                  className="ml-2 block text-sm text-gray-900 dark:text-gray-300"
+                >
+                  Remember me
+                </label>
+              </div>
+
+              <div className="text-sm">
+                <a
+                  href="/forgot-password"
+                  className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  Forgot your password?
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading || apiStatus === 'checking'}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <span className="flex items-center">
+                    <LoadingSpinner size={1.2} className="mr-2" />
+                    Signing in...
+                  </span>
+                ) : (
+                  'Sign in'
+                )}
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div>
+                <a
+                  href="/api/auth/google"
+                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600"
+                >
+                  <span className="sr-only">Sign in with Google</span>
+                  <svg
+                    className="w-5 h-5"
+                    aria-hidden="true"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
+                  </svg>
+                </a>
+              </div>
+
+              <div>
+                <a
+                  href="/api/auth/github"
+                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600"
+                >
+                  <span className="sr-only">Sign in with GitHub</span>
+                  <svg
+                    className="w-5 h-5"
+                    aria-hidden="true"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.699 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.14 20.195 22 16.44 22 12.017 22 6.484 17.522 2 11.99 2z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default Login;
