@@ -1,68 +1,85 @@
-// src/pages/CreateTicket.tsx
-import React, { useState } from "react";
-import API from "../api";
+import React, { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import API from "../api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorAlert from "../components/ErrorAlert";
-import { useAuth } from "../context/AuthContext";
+
+type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+type Category = "GENERAL" | "HARDWARE" | "SOFTWARE" | "NETWORK" | "ACCESS";
+
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 export default function CreateTicket() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState("MEDIUM");
-  const [category, setCategory] = useState("GENERAL");
+  const [priority, setPriority] = useState<Priority>("MEDIUM");
+  const [category, setCategory] = useState<Category>("GENERAL");
   const [file, setFile] = useState<File | null>(null);
-
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [apiUrl, setApiUrl] = useState<string>("");
-
+  
   const nav = useNavigate();
   const { user } = useAuth();
 
-  // Log API URL on mount for debugging
-  React.useEffect(() => {
-    const url = (import.meta.env.VITE_API_URL || API.defaults.baseURL) as string;
-    setApiUrl(url);
-    console.log("CreateTicket - API URL:", url);
-    console.log("CreateTicket - Full API Base:", API.defaults.baseURL);
-    console.log("CreateTicket - VITE_API_URL env:", import.meta.env.VITE_API_URL || "NOT SET");
+  const resetForm = useCallback(() => {
+    setTitle("");
+    setDescription("");
+    setPriority("MEDIUM");
+    setCategory("GENERAL");
+    setFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   }, []);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    // 🔥 Validation
+  const validateForm = useCallback((): boolean => {
     if (title.trim().length < 5) {
       setError("Title must be at least 5 characters long.");
-      return;
+      return false;
     }
     if (description.trim().length < 10) {
       setError("Description must be at least 10 characters long.");
+      return false;
+    }
+    if (file && file.size > MAX_FILE_SIZE_BYTES) {
+      setError(`File size must be less than ${MAX_FILE_SIZE_MB}MB`);
+      return false;
+    }
+    return true;
+  }, [title, description, file]);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
+        setError(`File size must be less than ${MAX_FILE_SIZE_MB}MB`);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+      setFile(selectedFile);
+    }
+  }, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!validateForm()) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("You are not logged in. Please log in and try again.");
       return;
     }
 
     try {
       setLoading(true);
 
-      // Check if user is logged in
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("You are not logged in. Please log in and try again.");
-        setLoading(false);
-        return;
-      }
-
-      // Ensure token is set in API defaults
-      API.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-      // Log API details for debugging
-      console.log("Creating ticket with API:", API.defaults.baseURL);
-      console.log("Token present:", !!token);
-      console.log("Authorization header:", API.defaults.headers.common["Authorization"] ? "Set" : "Missing");
-
-      // 🔥 Send as multipart form (supports file upload)
       const formData = new FormData();
       formData.append("title", title.trim());
       formData.append("description", description.trim());
@@ -70,203 +87,212 @@ export default function CreateTicket() {
       formData.append("category", category);
       if (file) {
         formData.append("file", file);
-        console.log("Including file:", file.name, file.size, "bytes");
       }
 
-      // For multipart/form-data, let axios set Content-Type automatically
-      // But explicitly include Authorization header
-      const response = await API.post("/tickets", formData, {
+      await API.post("/tickets", formData, {
         headers: { 
-          "Authorization": `Bearer ${token}`
-          // Don't set Content-Type - axios will set it with boundary for multipart
+          "Authorization": `Bearer ${token}`,
         },
       });
 
-    console.log("Ticket created successfully:", response.data);
-    setLoading(false);
-
-    // Show success message and then redirect
-    setError("Ticket created successfully! Redirecting...");
-    setTimeout(() => {
-      nav("/");
-    }, 1500);
-    } catch (err: any) {
-      setLoading(false);
-      console.error("Create ticket error:", err);
-      console.error("Error details:", {
-        status: err?.response?.status,
-        statusText: err?.response?.statusText,
-        data: err?.response?.data,
-        message: err?.message,
-        code: err?.code,
-        config: {
-          url: err?.config?.url,
-          baseURL: err?.config?.baseURL,
-          method: err?.config?.method
-        }
-      });
+      setError("Ticket created successfully! Redirecting...");
+      resetForm();
       
-      // Better error handling with more details
+      setTimeout(() => {
+        nav("/tickets");
+      }, 1500);
+
+    } catch (err: any) {
       if (err?.response?.status === 401) {
-        setError("You are not logged in or your session expired. Please log in and try again.");
-        // Clear invalid token
+        setError("Your session has expired. Please log in again.");
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         setTimeout(() => nav("/login"), 2000);
-      } else if (err?.response?.status === 0 || err?.code === "ERR_NETWORK" || err?.code === "ERR_INTERNET_DISCONNECTED") {
-        const apiUrl = API.defaults.baseURL || "NOT SET";
-        setError(`Network error. Cannot reach backend at ${apiUrl}. Please check: 1) Backend is running, 2) VITE_API_URL is set in Vercel.`);
+      } else if (err?.response?.status === 413) {
+        setError(`File is too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.`);
+      } else if (err?.response?.status === 429) {
+        setError("Too many requests. Please wait a moment and try again.");
+      } else if (err?.code === "ERR_NETWORK" || err?.code === "ERR_INTERNET_DISCONNECTED") {
+        setError("Network error. Please check your internet connection.");
       } else if (err?.response?.status === 500) {
-        const errorMsg = err?.response?.data?.error || "Server error";
-        setError(`Server error: ${errorMsg}. The backend might be having issues. Check Railway logs.`);
-      } else if (err?.response?.data?.error) {
-        setError(err.response.data.error);
-      } else if (err?.message) {
-        setError(`Error: ${err.message}`);
+        setError("Server error. Please try again later.");
       } else {
-        setError("Failed to create ticket. Please check the browser console for details.");
+        setError(err?.response?.data?.error || "Failed to create ticket. Please try again.");
       }
+    } finally {
+      setLoading(false);
     }
-  }
+  }, [title, description, priority, category, file, validateForm, resetForm, nav]);
+
+  const isFormDirty = title.trim() || description.trim() || file;
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto p-4">
       <form
-        onSubmit={submit}
-        className="bg-white dark:bg-slate-800 p-6 rounded shadow space-y-4"
+        onSubmit={handleSubmit}
+        className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md space-y-4"
+        aria-busy={loading}
       >
-        <h2 className="text-xl font-semibold dark:text-slate-100">
-          Create Ticket
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Create New Ticket
         </h2>
 
-        {/* Error Alert */}
         <ErrorAlert message={error} />
-        
-        {/* Debug info - visible in production to help diagnose issues */}
-        <div className="text-xs text-gray-500 dark:text-gray-400 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
-          <div className="font-semibold mb-2">🔍 Debug Info:</div>
-          <div>API URL: <span className="font-mono text-xs">{apiUrl || "NOT SET"}</span></div>
-          <div>Base URL: <span className="font-mono text-xs">{API.defaults.baseURL}</span></div>
-          <div>Environment: {import.meta.env.MODE}</div>
-          <div>VITE_API_URL: {import.meta.env.VITE_API_URL || "NOT SET"}</div>
-          {!import.meta.env.VITE_API_URL && import.meta.env.PROD && (
-            <div className="text-red-600 dark:text-red-400 mt-2 font-semibold">
-              ⚠️ VITE_API_URL not set! Set it in Vercel environment variables.
-            </div>
-          )}
-          {!import.meta.env.VITE_API_URL && import.meta.env.DEV && (
-            <div className="text-blue-600 dark:text-blue-400 mt-2">
-              ℹ️ Using localhost API (development mode - this is normal)
-            </div>
-          )}
-        </div>
 
-        {/* Title */}
         <div>
-          <input
-            maxLength={100}
-            className="w-full border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 p-2 rounded"
-            placeholder="Title (minimum 5 characters)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <p className="text-xs text-right text-slate-500 dark:text-slate-400">
-            {title.length}/100
-          </p>
-        </div>
-
-        {/* Description */}
-        <div>
-          <textarea
-            maxLength={500}
-            className="w-full border dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 p-2 rounded h-32"
-            placeholder="Describe the issue (minimum 10 characters)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <p className="text-xs text-right text-slate-500 dark:text-slate-400">
-            {description.length}/500
-          </p>
-        </div>
-
-        {/* Category */}
-        <select
-          className="border w-full p-2 rounded dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          <option value="GENERAL">General</option>
-          <option value="HARDWARE">Hardware</option>
-          <option value="SOFTWARE">Software</option>
-          <option value="NETWORK">Network</option>
-          <option value="ACCESS">Access Request</option>
-        </select>
-
-        {/* Priority */}
-        <select
-          className="border w-full p-2 rounded dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-          value={priority}
-          onChange={(e) => setPriority(e.target.value)}
-        >
-          <option value="LOW">Low</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="HIGH">High</option>
-          <option value="URGENT">Urgent</option>
-        </select>
-
-        {/* File Upload */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-            Attachment (optional):
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Title <span className="text-red-500">*</span>
           </label>
           <input
-            type="file"
-            className="block w-full text-sm text-gray-900 dark:text-slate-200 
-            file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 
-            file:text-sm file:font-semibold 
-            file:bg-blue-50 file:text-blue-700 
-            dark:file:bg-slate-700 dark:file:text-slate-200
-            hover:file:bg-blue-100 dark:hover:file:bg-slate-600
-            cursor-pointer border dark:border-slate-600 rounded p-1"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            id="title"
+            type="text"
+            maxLength={100}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
+            placeholder="Brief description of your issue"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            disabled={loading}
+            required
           />
+          <p className="text-xs text-right text-gray-500 dark:text-gray-400 mt-1">
+            {title.length}/100 characters
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Description <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            id="description"
+            maxLength={500}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white h-32"
+            placeholder="Please provide detailed information about your issue"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={loading}
+            required
+          />
+          <p className="text-xs text-right text-gray-500 dark:text-gray-400 mt-1">
+            {description.length}/500 characters
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Category
+            </label>
+            <select
+              id="category"
+              className="w-full border border-gray-300 dark:border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
+              value={category}
+              onChange={(e) => setCategory(e.target.value as Category)}
+              disabled={loading}
+            >
+              <option value="GENERAL">General</option>
+              <option value="HARDWARE">Hardware</option>
+              <option value="SOFTWARE">Software</option>
+              <option value="NETWORK">Network</option>
+              <option value="ACCESS">Access Request</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="priority" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Priority
+            </label>
+            <select
+              id="priority"
+              className="w-full border border-gray-300 dark:border-slate-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as Priority)}
+              disabled={loading}
+            >
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="URGENT">Urgent</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Attachment (optional, max {MAX_FILE_SIZE_MB}MB)
+          </label>
+          <div className="mt-1 flex items-center">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={loading}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              id="file-upload"
+            />
+            <label
+              htmlFor="file-upload"
+              className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:hover:bg-slate-600"
+            >
+              Choose File
+            </label>
+            <span className="ml-3 text-sm text-gray-500 dark:text-gray-300">
+              {file ? file.name : "No file chosen"}
+            </span>
+          </div>
           {file && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Selected: {file.name}
-            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setFile(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+              className="mt-1 text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+              disabled={loading}
+            >
+              Remove file
+            </button>
           )}
         </div>
 
-        {/* Created by */}
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Ticket will be created by: <strong>{user?.name || user?.email || "Unknown"}</strong>
-        </p>
-
-        {/* Buttons */}
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={loading}
-            className={`px-4 py-2 rounded text-white flex items-center ${
-              loading
-                ? "bg-blue-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
-          >
-            {loading ? <LoadingSpinner size={1.1} /> : null}
-            <span className="ml-2">
-              {loading ? "Creating..." : "Create Ticket"}
-            </span>
-          </button>
-
+        <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-slate-700">
           <button
             type="button"
+            onClick={() => nav(-1)}
             disabled={loading}
-            onClick={() => nav("/")}
-            className="px-3 py-2 bg-gray-100 dark:bg-slate-700 dark:text-slate-100 rounded hover:bg-gray-200 dark:hover:bg-slate-600"
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:hover:bg-slate-600 disabled:opacity-50"
           >
             Cancel
           </button>
+          
+          <div className="flex items-center space-x-3">
+            {isFormDirty && (
+              <button
+                type="button"
+                onClick={resetForm}
+                disabled={loading}
+                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:hover:bg-slate-600 disabled:opacity-50"
+              >
+                Reset
+              </button>
+            )}
+            
+            <button
+              type="submit"
+              disabled={loading || !title.trim() || !description.trim()}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center">
+                  <LoadingSpinner size={1.2} className="mr-2" />
+                  Creating...
+                </span>
+              ) : (
+                "Create Ticket"
+              )}
+            </button>
+          </div>
         </div>
       </form>
     </div>
